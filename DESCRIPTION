@@ -1,0 +1,16 @@
+Package: msxtractor
+Type: Package
+Title: Simple XIC and MS2 Extraction from mzML/mzXML Files
+Version: 0.1.0
+Authors@R: person(given = "Amir", family = "Sakhteman", role = c("aut", "cre"), email = "amir@example.com")
+Description: Small helper functions for extracting extracted ion chromatograms (XICs) from MS1 data and MS2 spectra matching a target precursor m/z from mzML or mzXML files using MSnbase.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 4.1.0)
+Imports:
+    MSnbase
+Suggests:
+    ggplot2
+RoxygenNote: 7.3.2
