@@ -1,3 +1,39 @@
+#' Extract Total ion chromatogram from an MS file
+#'
+#' This function reads an mzML or mzXML file with mzR,
+#' and extracts an TIC 
+#'
+#' @param path Character. Path to an mzML or mzXML file.
+#'
+#' @return A data.frame with columns rt and intensity.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' tic <- extract_tic("file.mzXML")
+#' }
+extract_tic <- function(file) {
+  
+  ms <- mzR::openMSfile(file)
+  
+  hdr <- mzR::header(ms)
+  
+  # retention time and total ion current
+  tic <- data.frame(
+    rt = hdr$retentionTime,
+    intensity = hdr$totIonCurrent
+  )
+  
+  mzR::close(ms)
+  
+  tic
+}
+
+
+
+
+
+
 #' Extract an extracted ion chromatogram from an MS file
 #'
 #' This function reads an mzML or mzXML file with MSnbase, keeps MS1 scans,
