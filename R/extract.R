@@ -1,3 +1,47 @@
+#' Extract Ms1 table from an MS file
+#'
+#' This function reads an mzML or mzXML file with mzR,
+#' and extracts MS1 table 
+#'
+#' @param path Character. Path to an mzML or mzXML file.
+#'
+#' @return A data.frame with columns rt, mz and intensity.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' extract_ms1_peaks <- extract_tic("file.mzXML")
+#' }
+extract_ms1_peaks <- function(file) {
+  
+  ms <- mzR::openMSfile(file)
+  hdr <- mzR::header(ms)
+  
+  ms1_idx <- which(hdr$msLevel == 1)
+  
+  res <- do.call(rbind, lapply(ms1_idx, function(i) {
+    p <- mzR::peaks(ms, i)
+    
+    data.frame(
+      rt = hdr$retentionTime[i],
+      mz = p[, 1],
+      intensity = p[, 2]
+    )
+  }))
+  
+  mzR::close(ms)
+  
+  res
+}
+
+
+
+
+
+
+
+
+
 #' Extract Total ion chromatogram from an MS file
 #'
 #' This function reads an mzML or mzXML file with mzR,
