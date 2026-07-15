@@ -1,3 +1,165 @@
+#' Extract MS1 and MS2 peaks from a mass spectrometry data file
+#'
+#' Reads a mass spectrometry file supported by \pkg{mzR} and extracts:
+#' \itemize{
+#'   \item Total ion chromatogram (TIC) information
+#'   \item All MS1 centroid/profile peaks
+#'   \item All MS2 centroid/profile peaks together with their precursor m/z
+#' }
+#'
+#' The returned peak tables contain one row per m/z-intensity pair and include
+#' the corresponding retention time for each scan. MS2 peaks additionally
+#' include the precursor m/z value recorded for the scan.
+#'
+#' @param file Character string. Path to a mass spectrometry file (e.g.
+#'   mzML, mzXML, or netCDF) readable by \pkg{mzR}.
+#'
+#' @return A named list with three elements:
+#' \describe{
+#'   \item{tic}{
+#'     A data frame containing:
+#'     \itemize{
+#'       \item \code{rt}: retention time (seconds)
+#'       \item \code{intensity}: total ion current
+#'     }
+#'   }
+#'   \item{ms1}{
+#'     A data frame containing all MS1 peaks with columns:
+#'     \itemize{
+#'       \item \code{rt}: retention time
+#'       \item \code{mz}: m/z value
+#'       \item \code{intensity}: peak intensity
+#'     }
+#'   }
+#'   \item{ms2}{
+#'     A data frame containing all MS2 peaks with columns:
+#'     \itemize{
+#'       \item \code{rt}: retention time
+#'       \item \code{mz}: fragment m/z value
+#'       \item \code{intensity}: fragment intensity
+#'       \item \code{precursor_mz}: precursor ion m/z
+#'     }
+#'   }
+#' }
+#'
+#' @details
+#' The function opens the raw MS file using \code{mzR::openMSfile()},
+#' extracts scan metadata using \code{mzR::header()}, retrieves peak
+#' matrices for all MS1 and MS2 scans, and combines them into long-format
+#' data frames suitable for plotting, filtering, or downstream analysis.
+#'
+#' Retention times are reported in the units stored in the mzML file
+#' (typically seconds).
+#'
+#' @examples
+#' \dontrun{
+#' res <- extract_ms_peaks("sample.mzML")
+#'
+#' head(res$tic)
+#' head(res$ms1)
+#' head(res$ms2)
+#'
+#' # Number of MS1 peaks
+#' nrow(res$ms1)
+#'
+#' # Filter MS2 fragments from precursor 445.34 ± 0.01 Da
+#' subset(
+#'   res$ms2,
+#'   abs(precursor_mz - 445.34) <= 0.01
+#' )
+#' }
+#'
+#' @importFrom mzR openMSfile header peaks close
+#' @export
+extract_ms_peaks <- function(file) {
+  ms <- mzR::openMSfile(file)
+  hdr <- mzR::header(ms)
+  tic <- data.frame(
+    rt = hdr$retentionTime,
+    intensity = hdr$totIonCurrent
+  )
+  
+  extract_level <- function(idx, precursor = FALSE) {
+    
+    res <- lapply(idx, function(i) {
+      p <- mzR::peaks(ms, i)
+      if (is.null(p) || nrow(p) == 0)
+        return(NULL)
+      df <- data.frame(
+        rt = rep(hdr$retentionTime[i], nrow(p)),
+        mz = p[, 1],
+        intensity = p[, 2]
+      )
+      if (precursor) {
+        df$precursor_mz <- rep(hdr$precursorMZ[i], nrow(p))
+      }
+      df
+    })
+    res <- Filter(Negate(is.null), res)
+    if (length(res) == 0)
+      return(data.frame())
+    do.call(rbind, res)
+  }
+  
+  res_ms1 <- extract_level(which(hdr$msLevel == 1))
+  res_ms2 <- extract_level(which(hdr$msLevel == 2), precursor = TRUE)
+
+  mzR::close(ms)
+  list(
+    tic = tic,
+    ms1 = res_ms1,
+    ms2 = res_ms2
+  )
+}
+
+
+
+
+
+#' Filter a data frame by m/z value within a specified tolerance
+#'
+#' Returns all rows where the values in a specified column are within
+#' a given absolute tolerance of a target m/z value.
+#'
+#' This utility is useful for extracting MS1 or MS2 signals around a
+#' selected precursor or fragment m/z from the output of
+#' [extract_ms_peaks()] or similar peak tables.
+#'
+#' @param df A data frame containing an m/z column.
+#' @param mz Numeric. Target m/z value to search for.
+#' @param tol Numeric. Absolute m/z tolerance.
+#' @param colname Character string specifying the column containing
+#'   m/z values. Defaults to `"mz"`.
+#'
+#' @return A data frame containing only rows where
+#'   `abs(df[[colname]] - mz) <= tol`.
+#'
+#' @details
+#' The filtering uses an absolute tolerance rather than ppm:
+#'
+#' \deqn{|m/z_{observed} - m/z_{target}| \le tolerance}
+#'
+#' If no rows satisfy the criterion, an empty data frame with the same
+#' columns is returned.
+#'
+#' @examples
+#' peaks <- data.frame(
+#'   mz = c(100.01, 100.05, 101.20),
+#'   intensity = c(1000, 500,
+filter_mz <- function(df, mz, tol, colname = "mz") {
+  
+  stopifnot(colname %in% names(df))
+  
+  df[abs(df[[colname]] - mz) <= tol, , drop = FALSE]
+  
+}
+
+
+
+
+
+
+
 #' Extract Ms1 table from an MS file
 #'
 #' This function reads an mzML or mzXML file with mzR,
