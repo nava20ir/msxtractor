@@ -1,4 +1,6 @@
+export(filter_mz)
 export(extract_xic)
+export(extract_ms_peaks)
 export(extract_tic)
 export(extract_ms2)
 export(plot_xic)
